@@ -100,7 +100,7 @@ abstract class AbstractCodec<T> implements Codec<T> {
     boolean isTypeAssignable(Class<?> type) {
         Assert.requireNonNull(type, "type must not be null");
 
-        return type.isAssignableFrom(this.type);
+        return this.type.isAssignableFrom(type);
     }
 
 }

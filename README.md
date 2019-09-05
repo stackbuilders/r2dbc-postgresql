@@ -143,7 +143,7 @@ This reference table shows the type mapping between [PostgreSQL][p] and Java dat
 | [`inet`][psql-inet-ref]                         | [**`InetAddress`**][java-inet-ref]|
 | [`integer`][psql-integer-ref]                   | [**`Integer`**][java-integer-ref], [`Boolean`][java-boolean-ref], [`Byte`][java-byte-ref], [`Short`][java-short-ref], [`Long`][java-long-ref]|
 | [`interval`][psql-interval-ref]                 | Not yet supported.|
-| [`json`][psql-json-ref]                         | Not yet supported.|
+| [`json`][psql-json-ref], [`jsonb`][psql-json-ref] | [`Map`][java-map-ref], [`Object`][java-object-ref], [`byte[]`][java-primitive-ref], [`ByteBuf`][java-bytebuf-ref], [`InputStream`][java-input-stream-ref]|
 | [`line`][psql-line-ref]                         | Not yet supported.|
 | [`lseg`][psql-lseq-ref]                         | Not yet supported.|
 | [`macaddr`][psql-macaddr-ref]                   | Not yet supported.|
@@ -219,16 +219,21 @@ Support for the following single-dimensional arrays (read and write):
 [java-bigdecimal-ref]: https://docs.oracle.com/javase/8/docs/api/java/math/BigDecimal.html
 [java-boolean-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Boolean.html
 [java-byte-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Byte.html
+[java-bytebuf-ref]: https://netty.io/4.1/api/io/netty/buffer/ByteBuf.html
 [java-double-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Double.html
 [java-float-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Float.html
 [java-inet-ref]: https://docs.oracle.com/javase/7/docs/api/java/net/InetAddress.html
+[java-input-stream-ref]:https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html
 [java-instant-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/Instant.html
 [java-integer-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Integer.html
 [java-long-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Long.html
+[java-map-ref]: https://docs.oracle.com/javase/8/docs/api/java/util/Map.html
 [java-ldt-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/LocalDateTime.html
 [java-ld-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/LocalDate.html
 [java-lt-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/LocalTime.html
+[java-object-ref]: https://docs.oracle.com/javase/8/docs/api/java/util/Objects.html
 [java-odt-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/OffsetDateTime.html
+[java-primitive-ref]: https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html
 [java-short-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Short.html
 [java-string-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/String.html
 [java-uuid-ref]: https://docs.oracle.com/javase/8/docs/api/java/util/UUID.html

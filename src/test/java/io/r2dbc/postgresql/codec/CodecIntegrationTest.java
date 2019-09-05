@@ -16,20 +16,8 @@
 
 package io.r2dbc.postgresql.codec;
 
-import io.netty.buffer.ByteBuf;
-import io.r2dbc.postgresql.PostgresqlConnectionConfiguration;
-import io.r2dbc.postgresql.PostgresqlConnectionFactory;
-import io.r2dbc.postgresql.PostgresqlResult;
-import io.r2dbc.postgresql.util.PostgresqlServerExtension;
-import io.r2dbc.spi.Blob;
-import io.r2dbc.spi.Clob;
-import io.r2dbc.spi.Connection;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
+import static io.r2dbc.postgresql.util.TestByteBufAllocator.TEST;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.net.InetAddress;
@@ -45,13 +33,30 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import static io.r2dbc.postgresql.util.TestByteBufAllocator.TEST;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.reactivestreams.Publisher;
+
+import io.netty.buffer.ByteBuf;
+import io.r2dbc.postgresql.PostgresqlConnectionConfiguration;
+import io.r2dbc.postgresql.PostgresqlConnectionFactory;
+import io.r2dbc.postgresql.PostgresqlResult;
+import io.r2dbc.postgresql.util.JsonPojo;
+import io.r2dbc.postgresql.util.PostgresqlServerExtension;
+import io.r2dbc.spi.Blob;
+import io.r2dbc.spi.Clob;
+import io.r2dbc.spi.Connection;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 final class CodecIntegrationTest {
 
@@ -281,6 +286,102 @@ final class CodecIntegrationTest {
     @Test
     void zonedDateTime() {
         testCodec(ZonedDateTime.class, ZonedDateTime.now(), (actual, expected) -> assertThat(actual.isEqual(expected)).isTrue(), "TIMESTAMP WITH TIME ZONE");
+    }
+    
+    @Test
+    void hashMapJson() {
+    	Map<String, Object> map = new HashMap<>();
+    	map.put("name", "John Doe");
+    	map.put("age", 29);
+    	map.put("birthdate", new Date());
+    	map.put("isAdmin", true);
+    	map.put("profiles", Arrays.asList("ADMIN", "USER", "ALL"));
+    	map.put("attrs", Map.of("prop1", "foo"));
+    	map.put("nullable", null);
+    	
+    	testCodec(
+    		Map.class,
+    		map,
+    		(actual, expected) -> {
+    			assertThat(actual.get("name")).isEqualTo(expected.get("name"));
+    			assertThat(actual.get("age")).isEqualTo(expected.get("age"));
+    			assertThat(new Date((long) actual.get("birthdate"))).isEqualTo(expected.get("birthdate"));
+    			assertThat(actual.get("isAdmin")).isEqualTo(expected.get("isAdmin"));
+    			assertThat(actual.get("profiles")).isEqualTo(expected.get("profiles"));
+    			assertThat(actual.get("attrs")).isEqualTo(expected.get("attrs"));
+    			assertThat(actual.get("nullable")).isEqualTo(expected.get("nullable"));
+    		},
+    		"JSON"
+    	);
+    }
+    
+    @Test
+    void hashMapJsonB() {
+    	Map<String, Object> map = new HashMap<>();
+    	map.put("name", "John Doe");
+    	map.put("age", 29);
+    	map.put("birthdate", new Date());
+    	map.put("isAdmin", true);
+    	map.put("profiles", Arrays.asList("ADMIN", "USER", "ALL"));
+    	map.put("attrs", Map.of("prop1", "foo"));
+    	map.put("nullable", null);
+    	
+    	testCodec(
+    		Map.class,
+    		map,
+    		(actual, expected) -> {
+    			assertThat(actual.get("name")).isEqualTo(expected.get("name"));
+    			assertThat(actual.get("age")).isEqualTo(expected.get("age"));
+    			assertThat(new Date((long) actual.get("birthdate"))).isEqualTo(expected.get("birthdate"));
+    			assertThat(actual.get("isAdmin")).isEqualTo(expected.get("isAdmin"));
+    			assertThat(actual.get("profiles")).isEqualTo(expected.get("profiles"));
+    			assertThat(actual.get("attrs")).isEqualTo(expected.get("attrs"));
+    			assertThat(actual.get("nullable")).isEqualTo(expected.get("nullable"));
+    		},
+    		"JSONB"
+    	);
+    }
+    
+    @Test
+    void pojoJson() {
+    	JsonPojo pojo = new JsonPojo();
+    	pojo.setName("John Doe");
+    	pojo.setAge(29);
+    	pojo.setBirthdate(new Date());
+    	pojo.setIsAdmin(true);
+    	pojo.setProfiles(Arrays.asList("ADMIN", "USER", "ALL"));
+    	pojo.setAttrs(Map.of("prop1", "foo"));
+    	pojo.setNullable(null);
+    	
+    	testCodec(
+    		JsonPojo.class,
+    		pojo,
+    		(actual, expected) -> {
+    			assertThat(actual).isEqualToComparingFieldByField(expected);
+    		},
+    		"JSON"
+    	);
+    }
+    
+    @Test
+    void pojoJsonB() {
+    	JsonPojo pojo = new JsonPojo();
+    	pojo.setName("John Doe");
+    	pojo.setAge(29);
+    	pojo.setBirthdate(new Date());
+    	pojo.setIsAdmin(true);
+    	pojo.setProfiles(Arrays.asList("ADMIN", "USER", "ALL"));
+    	pojo.setAttrs(Map.of("prop1", "foo"));
+    	pojo.setNullable(null);
+    	
+    	testCodec(
+    		JsonPojo.class,
+    		pojo,
+    		(actual, expected) -> {
+    			assertThat(actual).isEqualToComparingFieldByField(expected);
+    		},
+    		"JSONB"
+    	);
     }
 
     private static <T> Mono<T> close(Connection connection) {

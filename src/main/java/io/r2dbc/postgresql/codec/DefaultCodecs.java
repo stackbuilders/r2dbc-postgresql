@@ -73,7 +73,8 @@ public final class DefaultCodecs implements Codecs {
             new ShortArrayCodec(byteBufAllocator),
             new StringArrayCodec(byteBufAllocator),
             new IntegerArrayCodec(byteBufAllocator),
-            new LongArrayCodec(byteBufAllocator)
+            new LongArrayCodec(byteBufAllocator),
+            new JsonCodec(byteBufAllocator)
         );
     }
 
