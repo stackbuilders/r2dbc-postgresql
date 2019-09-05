@@ -56,6 +56,10 @@ public final class PostgresqlConnection implements Connection {
     private final StatementCache statementCache;
 
     private final Flux<Integer> validationQuery;
+    
+    private boolean autoCommit = true;
+    
+    private IsolationLevel isolationLevel = IsolationLevel.READ_COMMITTED;
 
     PostgresqlConnection(Client client, Codecs codecs, PortalNameSupplier portalNameSupplier, StatementCache statementCache, boolean forceBinary) {
         this.client = Assert.requireNonNull(client, "client must not be null");
@@ -106,21 +110,24 @@ public final class PostgresqlConnection implements Connection {
     @Override
     public Mono<Void> createSavepoint(String name) {
         Assert.requireNonNull(name, "name must not be null");
-
-        return useTransactionStatus(transactionStatus -> {
-            if (OPEN == transactionStatus) {
-                return SimpleQueryMessageFlow.exchange(this.client, String.format("SAVEPOINT %s", name))
-                    .handle(PostgresqlExceptionFactory::handleErrorResponse);
-            } else {
-                this.logger.debug("Skipping create savepoint because status is {}", transactionStatus);
-                return Mono.empty();
-            }
-        });
+        
+        return Mono.when(this.setAutoCommit(false))
+            .then(useTransactionStatus(transactionStatus -> {
+                if (OPEN == transactionStatus) {
+                    return SimpleQueryMessageFlow.exchange(this.client, String.format("SAVEPOINT %s", name))
+                        .handle(PostgresqlExceptionFactory::handleErrorResponse);
+                } else {
+                    this.logger.debug("Skipping create savepoint because status is {}", transactionStatus);
+                    return Mono.empty();
+                }
+            }));
     }
 
     @Override
-    public PostgresqlStatement createStatement(String sql) {
-        Assert.requireNonNull(sql, "sql must not be null");
+    public PostgresqlStatement createStatement(String baseSql) {
+        Assert.requireNonNull(baseSql, "sql must not be null");
+        
+        final String sql = normalizeQuery(baseSql);
 
         if (SimpleQueryPostgresqlStatement.supports(sql)) {
             return new SimpleQueryPostgresqlStatement(this.client, this.codecs, sql);
@@ -134,16 +141,17 @@ public final class PostgresqlConnection implements Connection {
     @Override
     public Mono<Void> releaseSavepoint(String name) {
         Assert.requireNonNull(name, "name must not be null");
-
-        return useTransactionStatus(transactionStatus -> {
-            if (OPEN == transactionStatus) {
-                return SimpleQueryMessageFlow.exchange(this.client, String.format("RELEASE SAVEPOINT %s", name))
-                    .handle(PostgresqlExceptionFactory::handleErrorResponse);
-            } else {
-                this.logger.debug("Skipping release savepoint because status is {}", transactionStatus);
-                return Mono.empty();
-            }
-        });
+        
+        return Mono.from(this.setAutoCommit(true))
+            .then(useTransactionStatus(transactionStatus -> {
+                if (OPEN == transactionStatus) {
+                    return SimpleQueryMessageFlow.exchange(this.client, String.format("RELEASE SAVEPOINT %s", name))
+                        .handle(PostgresqlExceptionFactory::handleErrorResponse);
+                } else {
+                    this.logger.debug("Skipping release savepoint because status is {}", transactionStatus);
+                    return Mono.empty();
+                }
+            }));
     }
 
     @Override
@@ -177,8 +185,9 @@ public final class PostgresqlConnection implements Connection {
     @Override
     public Mono<Void> setTransactionIsolationLevel(IsolationLevel isolationLevel) {
         Assert.requireNonNull(isolationLevel, "isolationLevel must not be null");
-
-        return withTransactionStatus(getTransactionIsolationLevelQuery(isolationLevel))
+        
+        return Mono.fromRunnable(() -> this.isolationLevel = isolationLevel)
+            .then(withTransactionStatus(getTransactionIsolationLevelQuery(isolationLevel)))
             .flatMapMany(query -> SimpleQueryMessageFlow.exchange(this.client, query))
             .handle(PostgresqlExceptionFactory::handleErrorResponse)
             .then();
@@ -234,6 +243,23 @@ public final class PostgresqlConnection implements Connection {
             });
         });
     }
+    
+    @Override
+	public boolean isAutoCommit() {
+	    return autoCommit;
+	}
+
+	@Override
+	public IsolationLevel getTransactionIsolationLevel() {
+	    return isolationLevel;
+	}
+
+	@Override
+	public Publisher<Void> setAutoCommit(boolean autoCommit) {
+	    Assert.requireNonNull(autoCommit, "autoCommit nust not be null");
+	    
+	    return Mono.fromRunnable(() -> this.autoCommit = autoCommit);
+	}
 
     private static Function<TransactionStatus, String> getTransactionIsolationLevelQuery(IsolationLevel isolationLevel) {
         return transactionStatus -> {
@@ -252,6 +278,16 @@ public final class PostgresqlConnection implements Connection {
 
     private <T> Mono<T> withTransactionStatus(Function<TransactionStatus, T> f) {
         return Mono.defer(() -> Mono.just(f.apply(this.client.getTransactionStatus())));
+    }
+    
+    private String normalizeQuery(String sql) {
+        Assert.requireNonNull(sql, "sql must not be null");
+        
+        if (!this.isAutoCommit()) {
+            return String.format("BEGIN; %s", sql);
+        }
+        
+        return sql;
     }
 
 }
